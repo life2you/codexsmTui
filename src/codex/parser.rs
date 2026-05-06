@@ -77,7 +77,6 @@ pub fn parse_session_preview(path: &Path) -> Result<Session> {
         created_at: created_at.or(file_updated_at),
         updated_at: file_updated_at.or(last_seen_timestamp).or(created_at),
         size,
-        selected: false,
     })
 }
 

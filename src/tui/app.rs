@@ -50,7 +50,7 @@ impl App {
             sessions: scan.sessions,
             projects: Vec::new(),
             filtered_session_indices: Vec::new(),
-            focus: Focus::Sessions,
+            focus: Focus::Projects,
             project_state: ListState::default(),
             session_state: ListState::default(),
             search_mode: false,
@@ -107,23 +107,19 @@ impl App {
             KeyCode::Tab => self.toggle_focus(),
             KeyCode::Up => self.move_up(),
             KeyCode::Down => self.move_down(),
-            KeyCode::Enter => self.open_detail(),
+            KeyCode::Enter => self.handle_enter(),
+            KeyCode::Esc => {
+                if self.focus == Focus::Sessions {
+                    self.focus = Focus::Projects;
+                }
+            }
             KeyCode::Char('/') => self.search_mode = true,
-            KeyCode::Char(' ') => self.toggle_current_selection(),
             KeyCode::Char('d') => self.queue_current_delete(),
-            KeyCode::Char('D') => self.queue_selected_delete(),
             KeyCode::Char('r') => self.refresh(),
             KeyCode::Char('g') => self.jump_to_top(),
             KeyCode::Char('G') => self.jump_to_bottom(),
             _ => {}
         }
-    }
-
-    pub fn selected_count(&self) -> usize {
-        self.sessions
-            .iter()
-            .filter(|session| session.selected)
-            .count()
     }
 
     pub fn current_project(&self) -> Option<&crate::codex::Project> {
@@ -202,6 +198,17 @@ impl App {
         };
     }
 
+    fn handle_enter(&mut self) {
+        match self.focus {
+            Focus::Projects => {
+                self.focus = Focus::Sessions;
+            }
+            Focus::Sessions => {
+                self.open_detail();
+            }
+        }
+    }
+
     fn move_up(&mut self) {
         match self.focus {
             Focus::Projects => {
@@ -263,21 +270,6 @@ impl App {
         }
     }
 
-    fn toggle_current_selection(&mut self) {
-        let Some(session_index) = self.current_session_index() else {
-            return;
-        };
-
-        if let Some(session) = self.sessions.get_mut(session_index) {
-            session.selected = !session.selected;
-            self.status = if session.selected {
-                format!("Selected {}", session.id)
-            } else {
-                format!("Unselected {}", session.id)
-            };
-        }
-    }
-
     fn current_session_index(&self) -> Option<usize> {
         let selected_row = self.session_state.selected()?;
         self.filtered_session_indices.get(selected_row).copied()
@@ -295,25 +287,6 @@ impl App {
         self.confirm_delete = Some(DeleteRequest {
             session_indices: vec![session_index],
             prompt: format!("Delete this session? y/N [{}]", session.id),
-        });
-    }
-
-    fn queue_selected_delete(&mut self) {
-        let session_indices = self
-            .sessions
-            .iter()
-            .enumerate()
-            .filter_map(|(index, session)| session.selected.then_some(index))
-            .collect::<Vec<_>>();
-
-        if session_indices.is_empty() {
-            self.status = "No selected sessions".to_string();
-            return;
-        }
-
-        self.confirm_delete = Some(DeleteRequest {
-            prompt: format!("Delete selected {} sessions? y/N", session_indices.len()),
-            session_indices,
         });
     }
 

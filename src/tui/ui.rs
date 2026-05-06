@@ -2,7 +2,7 @@ use chrono::{DateTime, Local};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
+    style::Style,
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Padding, Paragraph, Wrap},
 };
@@ -67,7 +67,8 @@ fn render_projects(frame: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items)
         .block(block)
-        .highlight_style(styles::highlight());
+        .highlight_style(styles::highlight())
+        .highlight_symbol("> ");
     let mut state = app.project_state.clone();
     frame.render_stateful_widget(list, area, &mut state);
 }
@@ -114,7 +115,6 @@ fn render_sessions(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn session_item(session: &Session) -> ListItem<'static> {
-    let marker = if session.selected { "[x]" } else { "[ ]" };
     let title = truncate_display_width(&session.title, 68);
     let meta = format!(
         "{}  {}  {}",
@@ -124,11 +124,7 @@ fn session_item(session: &Session) -> ListItem<'static> {
     );
 
     ListItem::new(vec![
-        Line::from(vec![
-            Span::styled(marker, Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" "),
-            Span::styled(title, styles::title()),
-        ]),
+        Line::from(Span::styled(title, styles::title())),
         Line::from(vec![
             Span::styled(
                 truncate_display_width(&session.project_path, 58),
@@ -151,18 +147,12 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         format!(" | warnings: {}", app.warnings.len())
     };
-    let selected = if app.selected_count() == 0 {
-        String::new()
-    } else {
-        format!(" | selected: {}", app.selected_count())
-    };
 
     let text = Line::from(vec![
         Span::raw(left),
         Span::styled(warnings, Style::default().fg(styles::WARNING)),
-        Span::styled(selected, Style::default().fg(styles::ACCENT)),
         Span::styled(
-            " | tab focus | / search | enter detail | d delete | D delete selected | ? help | q quit",
+            " | tab focus | / search | enter detail | d delete | ? help | q quit",
             styles::muted(),
         ),
     ]);
@@ -184,12 +174,10 @@ fn render_help(frame: &mut Frame) {
         Line::from("?      toggle help"),
         Line::from("tab    switch focus"),
         Line::from("up/down move"),
-        Line::from("enter  open detail"),
+        Line::from("enter  open detail / switch panel"),
         Line::from("/      search"),
-        Line::from("esc    close search or popup"),
-        Line::from("space  select current session"),
+        Line::from("esc    back to projects / close popup"),
         Line::from("d      delete current session"),
-        Line::from("D      delete all selected sessions"),
         Line::from("r      refresh scan"),
         Line::from("g/G    top / bottom"),
         Line::from("y      confirm deletion"),
