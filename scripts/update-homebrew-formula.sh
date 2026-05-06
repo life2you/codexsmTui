@@ -7,7 +7,7 @@ DEFAULT_FORMULA_PATH="$REPO_ROOT/packaging/homebrew-tap/Formula/codexsmtui.rb"
 
 OWNER="${OWNER:-life2you}"
 REPO="${REPO:-codexsmTui}"
-FORMULA_CLASS="${FORMULA_CLASS:-CodexsmTui}"
+FORMULA_CLASS="${FORMULA_CLASS:-Codexsmtui}"
 VERSION=""
 FORMULA_PATH="$DEFAULT_FORMULA_PATH"
 DRY_RUN=0

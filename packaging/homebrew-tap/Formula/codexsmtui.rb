@@ -1,4 +1,4 @@
-class CodexsmTui < Formula
+class Codexsmtui < Formula
   desc "Terminal-first TUI for managing local OpenAI Codex CLI sessions"
   homepage "https://github.com/life2you/codexsmTui"
   url "https://github.com/life2you/codexsmTui/archive/refs/tags/v0.1.0.tar.gz"
