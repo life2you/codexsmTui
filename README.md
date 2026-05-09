@@ -41,6 +41,10 @@ brew tap life2you/tap
 brew install codexsmtui
 ```
 
+## Release
+
+Maintainer release steps live in [RELEASING.md](/Users/life2you/vibeCodes/github/codexsmTui/RELEASING.md).
+
 ## Usage
 
 Run the binary with no arguments:
