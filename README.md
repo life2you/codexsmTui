@@ -11,6 +11,8 @@ It scans local Codex session JSONL files, groups them by project path, supports 
 - Shows all sessions or groups by project path
 - Sorts sessions by updated time descending
 - Real-time search across title, project path, session id, and file path
+- Tail-first path rendering so project and session locations stay readable in narrow terminals
+- Bottom context preview for the currently selected project and session file
 - Session detail popup with metadata and recent message snippets
 - Single delete with confirmation
 - Multi-select and batch delete with confirmation
@@ -65,13 +67,13 @@ By default it scans:
 q      quit
 ?      toggle help
 tab    switch focus between project list and session list
+h/l    switch focus to project list / session list
+←/→    switch focus between project list and session list
 ↑/↓    move selection
-enter  open current session detail
+enter  switch into sessions or open current session detail
 /      enter search mode
-esc    exit search or close popup
-space  select / unselect current session
+esc    exit search, close popup, or return to projects
 d      delete current session
-D      delete all selected sessions
 r      refresh scan
 g      jump to top
 G      jump to bottom

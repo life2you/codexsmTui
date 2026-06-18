@@ -104,7 +104,9 @@ impl App {
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
             KeyCode::Char('?') => self.show_help = !self.show_help,
-            KeyCode::Tab => self.toggle_focus(),
+            KeyCode::Tab | KeyCode::Left | KeyCode::Right => self.toggle_focus(),
+            KeyCode::Char('h') => self.focus = Focus::Projects,
+            KeyCode::Char('l') => self.focus = Focus::Sessions,
             KeyCode::Up => self.move_up(),
             KeyCode::Down => self.move_down(),
             KeyCode::Enter => self.handle_enter(),

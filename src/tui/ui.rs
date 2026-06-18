@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use chrono::{DateTime, Local};
 use ratatui::{
     Frame,
@@ -18,17 +20,22 @@ use crate::{
 pub fn render(frame: &mut Frame, app: &App) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(10), Constraint::Length(2)])
+        .constraints([
+            Constraint::Min(10),
+            Constraint::Length(3),
+            Constraint::Length(2),
+        ])
         .split(frame.area());
 
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(38), Constraint::Min(40)])
+        .constraints([Constraint::Length(48), Constraint::Min(40)])
         .split(layout[0]);
 
     render_projects(frame, app, body[0]);
     render_sessions(frame, app, body[1]);
-    render_status(frame, app, layout[1]);
+    render_context(frame, app, layout[1]);
+    render_status(frame, app, layout[2]);
 
     if app.show_help {
         render_help(frame);
@@ -48,11 +55,22 @@ fn render_projects(frame: &mut Frame, app: &App, area: Rect) {
         .projects
         .iter()
         .map(|project| {
-            let path = truncate_display_width(&project.path, 26);
-            ListItem::new(Line::from(vec![
-                Span::styled(path, styles::title()),
-                Span::styled(format!(" ({})", project.session_count), styles::muted()),
-            ]))
+            if project.path == "All Sessions" {
+                return ListItem::new(Line::from(vec![
+                    Span::styled(project.path.clone(), styles::title()),
+                    Span::styled(format!(" ({})", project.session_count), styles::muted()),
+                ]));
+            }
+
+            let name = project_leaf_name(&project.path);
+            let path = compact_path(&project.path, 38);
+            ListItem::new(vec![
+                Line::from(vec![
+                    Span::styled(name, styles::title()),
+                    Span::styled(format!(" ({})", project.session_count), styles::muted()),
+                ]),
+                Line::from(Span::styled(path, styles::muted())),
+            ])
         })
         .collect::<Vec<_>>();
 
@@ -115,25 +133,78 @@ fn render_sessions(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn session_item(session: &Session) -> ListItem<'static> {
-    let title = truncate_display_width(&session.title, 68);
+    let title = truncate_display_width(&session.title, 76);
     let meta = format!(
         "{}  {}  {}",
-        session.id,
-        format_datetime(session.updated_at.as_ref()),
+        compact_session_id(&session.id),
+        format_short_datetime(session.updated_at.as_ref()),
         human_size(session.size)
     );
+    let project_path = compact_path(&session.project_path, 74);
+    let file_name = session
+        .file_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("session.jsonl")
+        .to_string();
 
     ListItem::new(vec![
         Line::from(Span::styled(title, styles::title())),
         Line::from(vec![
+            Span::styled(project_path, styles::muted()),
+            Span::raw(" "),
             Span::styled(
-                truncate_display_width(&session.project_path, 58),
+                format!("| {}", truncate_display_width(&file_name, 24)),
                 styles::muted(),
             ),
-            Span::raw(" "),
-            Span::styled(meta, styles::muted()),
         ]),
+        Line::from(vec![Span::styled(meta, styles::muted())]),
     ])
+}
+
+fn render_context(frame: &mut Frame, app: &App, area: Rect) {
+    let lines = vec![
+        Line::from(vec![
+            Span::styled("Project: ", styles::title()),
+            Span::raw(current_project_path(app)),
+        ]),
+        Line::from(vec![
+            Span::styled("Session File: ", styles::title()),
+            Span::raw(current_session_file(app)),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(styles::normal_border()),
+    );
+    frame.render_widget(paragraph, area);
+}
+
+fn current_project_path(app: &App) -> String {
+    app.current_project()
+        .map(|project| project.path.clone())
+        .unwrap_or_else(|| "All Sessions".to_string())
+}
+
+fn current_session_file(app: &App) -> String {
+    app.current_session()
+        .map(|session| session.file_path.display().to_string())
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn project_leaf_name(path: &str) -> String {
+    if path == "All Sessions" {
+        return path.to_string();
+    }
+
+    Path::new(path)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| path.to_string())
 }
 
 fn render_status(frame: &mut Frame, app: &App, area: Rect) {
@@ -147,12 +218,17 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         format!(" | warnings: {}", app.warnings.len())
     };
+    let focus = match app.focus {
+        Focus::Projects => "Projects",
+        Focus::Sessions => "Sessions",
+    };
 
     let text = Line::from(vec![
         Span::raw(left),
+        Span::styled(format!(" | focus: {focus}"), styles::muted()),
         Span::styled(warnings, Style::default().fg(styles::WARNING)),
         Span::styled(
-            " | tab focus | / search | enter detail | d delete | ? help | q quit",
+            " | tab/h/l switch | / search | enter open | d delete | ? help | q quit",
             styles::muted(),
         ),
     ]);
@@ -172,7 +248,7 @@ fn render_help(frame: &mut Frame) {
     let text = Text::from(vec![
         Line::from("q      quit"),
         Line::from("?      toggle help"),
-        Line::from("tab    switch focus"),
+        Line::from("tab/h/l or <-/-> switch focus"),
         Line::from("up/down move"),
         Line::from("enter  open detail / switch panel"),
         Line::from("/      search"),
@@ -292,6 +368,12 @@ fn format_datetime(value: Option<&DateTime<Local>>) -> String {
         .unwrap_or_else(|| "Unknown".to_string())
 }
 
+fn format_short_datetime(value: Option<&DateTime<Local>>) -> String {
+    value
+        .map(|dt| dt.format("%m-%d %H:%M").to_string())
+        .unwrap_or_else(|| "Unknown".to_string())
+}
+
 fn human_size(size: u64) -> String {
     const KB: f64 = 1024.0;
     const MB: f64 = KB * 1024.0;
@@ -303,6 +385,60 @@ fn human_size(size: u64) -> String {
     } else {
         format!("{:.1} MB", size as f64 / MB)
     }
+}
+
+fn compact_path(path: &str, max_width: usize) -> String {
+    if truncate_display_width(path, max_width) == path {
+        return path.to_string();
+    }
+
+    let normalized = path.replace('\\', "/");
+    let parts = normalized
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+
+    if parts.is_empty() {
+        return truncate_display_width(path, max_width);
+    }
+
+    let mut tail = parts
+        .last()
+        .map(|value| (*value).to_string())
+        .unwrap_or_else(|| path.to_string());
+
+    for part in parts.iter().rev().skip(1) {
+        let candidate = format!("{part}/{tail}");
+        let display = format!(".../{candidate}");
+        if unicode_width::UnicodeWidthStr::width(display.as_str()) > max_width {
+            break;
+        }
+        tail = candidate;
+    }
+
+    let compact = format!(".../{tail}");
+    if unicode_width::UnicodeWidthStr::width(compact.as_str()) <= max_width {
+        compact
+    } else {
+        truncate_display_width(&compact, max_width)
+    }
+}
+
+fn compact_session_id(id: &str) -> String {
+    if id.chars().count() <= 18 {
+        return id.to_string();
+    }
+
+    let start = id.chars().take(8).collect::<String>();
+    let end = id
+        .chars()
+        .rev()
+        .take(6)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>();
+    format!("{start}...{end}")
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
