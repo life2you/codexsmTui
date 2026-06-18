@@ -73,7 +73,9 @@ h/l    switch focus to project list / session list
 enter  switch into sessions or open current session detail
 /      enter search mode
 esc    exit search, close popup, or return to projects
+space  select / unselect current session
 d      delete current session
+D      delete all selected sessions
 r      refresh scan
 g      jump to top
 G      jump to bottom

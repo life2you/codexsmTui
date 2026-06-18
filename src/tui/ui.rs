@@ -133,6 +133,7 @@ fn render_sessions(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn session_item(session: &Session) -> ListItem<'static> {
+    let marker = if session.selected { "[x]" } else { "[ ]" };
     let title = truncate_display_width(&session.title, 76);
     let meta = format!(
         "{}  {}  {}",
@@ -149,7 +150,11 @@ fn session_item(session: &Session) -> ListItem<'static> {
         .to_string();
 
     ListItem::new(vec![
-        Line::from(Span::styled(title, styles::title())),
+        Line::from(vec![
+            Span::styled(marker, styles::title()),
+            Span::raw(" "),
+            Span::styled(title, styles::title()),
+        ]),
         Line::from(vec![
             Span::styled(project_path, styles::muted()),
             Span::raw(" "),
@@ -218,6 +223,11 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         format!(" | warnings: {}", app.warnings.len())
     };
+    let selected = if app.selected_count() == 0 {
+        String::new()
+    } else {
+        format!(" | selected: {}", app.selected_count())
+    };
     let focus = match app.focus {
         Focus::Projects => "Projects",
         Focus::Sessions => "Sessions",
@@ -226,9 +236,10 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
     let text = Line::from(vec![
         Span::raw(left),
         Span::styled(format!(" | focus: {focus}"), styles::muted()),
+        Span::styled(selected, styles::muted()),
         Span::styled(warnings, Style::default().fg(styles::WARNING)),
         Span::styled(
-            " | tab/h/l switch | / search | enter open | d delete | ? help | q quit",
+            " | tab/h/l switch | space select | d/D delete | enter open | / search | ? help | q quit",
             styles::muted(),
         ),
     ]);
@@ -251,9 +262,11 @@ fn render_help(frame: &mut Frame) {
         Line::from("tab/h/l or <-/-> switch focus"),
         Line::from("up/down move"),
         Line::from("enter  open detail / switch panel"),
+        Line::from("space  select or unselect current session"),
         Line::from("/      search"),
         Line::from("esc    back to projects / close popup"),
         Line::from("d      delete current session"),
+        Line::from("D      delete all selected sessions"),
         Line::from("r      refresh scan"),
         Line::from("g/G    top / bottom"),
         Line::from("y      confirm deletion"),
@@ -322,6 +335,10 @@ fn render_detail(frame: &mut Frame, detail: &crate::codex::SessionDetail) {
             Span::styled("Size: ", styles::title()),
             Span::raw(human_size(detail.session.size)),
         ]),
+        Line::from(vec![
+            Span::styled("Selected: ", styles::title()),
+            Span::raw(if detail.session.selected { "Yes" } else { "No" }),
+        ]),
         Line::from(""),
         Line::from(Span::styled("Recent Messages", styles::title())),
     ];
@@ -345,7 +362,7 @@ fn render_detail(frame: &mut Frame, detail: &crate::codex::SessionDetail) {
     }
 
     lines.push(Line::from(Span::styled(
-        "esc close | d delete",
+        "esc close | space select | d delete | D delete selected",
         styles::muted(),
     )));
 

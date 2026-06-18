@@ -14,6 +14,7 @@ pub struct Session {
     pub created_at: Option<DateTime<Local>>,
     pub updated_at: Option<DateTime<Local>>,
     pub size: u64,
+    pub selected: bool,
 }
 
 impl Session {

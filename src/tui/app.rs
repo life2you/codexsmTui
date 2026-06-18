@@ -116,7 +116,9 @@ impl App {
                 }
             }
             KeyCode::Char('/') => self.search_mode = true,
+            KeyCode::Char(' ') => self.toggle_current_selection(),
             KeyCode::Char('d') => self.queue_current_delete(),
+            KeyCode::Char('D') => self.queue_selected_delete(),
             KeyCode::Char('r') => self.refresh(),
             KeyCode::Char('g') => self.jump_to_top(),
             KeyCode::Char('G') => self.jump_to_bottom(),
@@ -150,6 +152,13 @@ impl App {
         }
     }
 
+    pub fn selected_count(&self) -> usize {
+        self.sessions
+            .iter()
+            .filter(|session| session.selected)
+            .count()
+    }
+
     fn handle_search_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
@@ -176,7 +185,9 @@ impl App {
     fn handle_detail_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => self.detail = None,
+            KeyCode::Char(' ') => self.toggle_current_selection(),
             KeyCode::Char('d') => self.queue_current_delete(),
+            KeyCode::Char('D') => self.queue_selected_delete(),
             KeyCode::Char('q') => self.should_quit = true,
             _ => {}
         }
@@ -277,6 +288,33 @@ impl App {
         self.filtered_session_indices.get(selected_row).copied()
     }
 
+    fn toggle_current_selection(&mut self) {
+        if self.focus != Focus::Sessions && self.detail.is_none() {
+            return;
+        }
+
+        let Some(session_index) = self.current_session_index() else {
+            return;
+        };
+
+        let Some(session) = self.sessions.get_mut(session_index) else {
+            return;
+        };
+
+        session.selected = !session.selected;
+        self.status = if session.selected {
+            format!("Selected {}", session.id)
+        } else {
+            format!("Unselected {}", session.id)
+        };
+
+        if let Some(detail) = self.detail.as_mut() {
+            if detail.session.file_path == session.file_path {
+                detail.session.selected = session.selected;
+            }
+        }
+    }
+
     fn queue_current_delete(&mut self) {
         let Some(session_index) = self.current_session_index() else {
             return;
@@ -289,6 +327,25 @@ impl App {
         self.confirm_delete = Some(DeleteRequest {
             session_indices: vec![session_index],
             prompt: format!("Delete this session? y/N [{}]", session.id),
+        });
+    }
+
+    fn queue_selected_delete(&mut self) {
+        let session_indices = self
+            .sessions
+            .iter()
+            .enumerate()
+            .filter_map(|(index, session)| session.selected.then_some(index))
+            .collect::<Vec<_>>();
+
+        if session_indices.is_empty() {
+            self.status = "No selected sessions".to_string();
+            return;
+        }
+
+        self.confirm_delete = Some(DeleteRequest {
+            prompt: format!("Delete selected {} sessions? y/N", session_indices.len()),
+            session_indices,
         });
     }
 
