@@ -62,15 +62,11 @@ fn render_projects(frame: &mut Frame, app: &App, area: Rect) {
                 ]));
             }
 
-            let name = project_leaf_name(&project.path);
-            let path = compact_path(&project.path, 38);
-            ListItem::new(vec![
-                Line::from(vec![
-                    Span::styled(name, styles::title()),
-                    Span::styled(format!(" ({})", project.session_count), styles::muted()),
-                ]),
-                Line::from(Span::styled(path, styles::muted())),
-            ])
+            let label = project_last_segments(&project.path, 2, 38);
+            ListItem::new(Line::from(vec![
+                Span::styled(label, styles::title()),
+                Span::styled(format!(" ({})", project.session_count), styles::muted()),
+            ]))
         })
         .collect::<Vec<_>>();
 
@@ -199,17 +195,24 @@ fn current_session_file(app: &App) -> String {
         .unwrap_or_else(|| "-".to_string())
 }
 
-fn project_leaf_name(path: &str) -> String {
+fn project_last_segments(path: &str, count: usize, max_width: usize) -> String {
     if path == "All Sessions" {
         return path.to_string();
     }
 
-    Path::new(path)
-        .file_name()
-        .and_then(|value| value.to_str())
-        .filter(|value| !value.is_empty())
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| path.to_string())
+    let parts = Path::new(path)
+        .components()
+        .filter_map(|component| component.as_os_str().to_str())
+        .filter(|value| !value.is_empty() && *value != "/")
+        .collect::<Vec<_>>();
+
+    if parts.is_empty() {
+        return truncate_display_width(path, max_width);
+    }
+
+    let start = parts.len().saturating_sub(count);
+    let label = parts[start..].join("/");
+    truncate_display_width(&label, max_width)
 }
 
 fn render_status(frame: &mut Frame, app: &App, area: Rect) {
