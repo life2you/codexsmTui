@@ -1,11 +1,14 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result};
 use walkdir::WalkDir;
 
 use crate::codex::{
     parser::parse_session_preview,
-    session::{Project, Session},
+    session::{Project, Session, UNKNOWN_PROJECT},
 };
 
 #[derive(Debug)]
@@ -74,19 +77,36 @@ pub fn scan_sessions(root: &std::path::Path) -> ScanResult {
 }
 
 pub fn build_projects(sessions: &[Session]) -> Vec<Project> {
-    let mut counts = BTreeMap::<String, usize>::new();
+    let mut counts = BTreeMap::<String, (usize, bool)>::new();
     for session in sessions {
-        *counts.entry(session.project_path.clone()).or_insert(0) += 1;
+        let entry = counts
+            .entry(session.project_path.clone())
+            .or_insert_with(|| (0, project_path_exists(&session.project_path)));
+        entry.0 += 1;
     }
 
     let mut projects = Vec::with_capacity(counts.len() + 1);
     projects.push(Project {
         path: "All Sessions".to_string(),
         session_count: sessions.len(),
+        path_exists: true,
     });
-    projects.extend(counts.into_iter().map(|(path, session_count)| Project {
-        path,
-        session_count,
-    }));
+    projects.extend(
+        counts
+            .into_iter()
+            .map(|(path, (session_count, path_exists))| Project {
+                path,
+                session_count,
+                path_exists,
+            }),
+    );
     projects
+}
+
+fn project_path_exists(path: &str) -> bool {
+    if path == UNKNOWN_PROJECT {
+        return true;
+    }
+
+    Path::new(path).exists()
 }

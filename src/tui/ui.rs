@@ -4,7 +4,7 @@ use chrono::{DateTime, Local};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::Style,
+    style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Padding, Paragraph, Wrap},
 };
@@ -64,6 +64,16 @@ fn render_projects(frame: &mut Frame, app: &App, area: Rect) {
 
             let label = project_last_segments(&project.path, 2, 38);
             ListItem::new(Line::from(vec![
+                if project.path_exists {
+                    Span::raw("")
+                } else {
+                    Span::styled(
+                        "! ",
+                        Style::default()
+                            .fg(styles::WARNING)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                },
                 Span::styled(label, styles::title()),
                 Span::styled(format!(" ({})", project.session_count), styles::muted()),
             ]))

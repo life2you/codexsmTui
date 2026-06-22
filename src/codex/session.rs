@@ -41,6 +41,7 @@ impl Session {
 pub struct Project {
     pub path: String,
     pub session_count: usize,
+    pub path_exists: bool,
 }
 
 #[derive(Clone, Debug)]
