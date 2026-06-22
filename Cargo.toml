@@ -1,6 +1,6 @@
 [package]
 name = "codexsmtui"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 license = "MIT"
 description = "A ratatui-based TUI for managing local OpenAI Codex CLI sessions"

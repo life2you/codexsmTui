@@ -180,6 +180,9 @@ fn render_context(frame: &mut Frame, app: &App, area: Rect) {
             Span::raw(current_project_path(app)),
         ]),
         Line::from(vec![
+            Span::styled("Status: ", styles::title()),
+            project_status_span(app),
+            Span::raw("  "),
             Span::styled("Session File: ", styles::title()),
             Span::raw(current_session_file(app)),
         ]),
@@ -203,6 +206,15 @@ fn current_session_file(app: &App) -> String {
     app.current_session()
         .map(|session| session.file_path.display().to_string())
         .unwrap_or_else(|| "-".to_string())
+}
+
+fn project_status_span(app: &App) -> Span<'static> {
+    match app.current_project() {
+        Some(project) if project.path == "All Sessions" => Span::styled("mixed", styles::muted()),
+        Some(project) if project.path_exists => Span::styled("ok", styles::muted()),
+        Some(_) => Span::styled("missing", Style::default().fg(styles::WARNING)),
+        None => Span::styled("-", styles::muted()),
+    }
 }
 
 fn project_last_segments(path: &str, count: usize, max_width: usize) -> String {
